@@ -31,6 +31,7 @@ def load_elastic_conf(index_name, rebuild=False):
     res = None
     try:
         if rebuild:
+            print(f"Deleting {index_name} index.")
             res = requests.delete(url)
         with open(f'{app.config["ELASTICSEARCH_CONFIG_DIR"]}/_global.conf.json', 'r') as _global:
             global_settings = json.load(_global)
@@ -115,6 +116,7 @@ def make_cli(env='dev'):
             url = '/'.join([app.config['ELASTICSEARCH_URL'], name])
             res = None
             try:
+                print(f"Deleting {name} index.")
                 res = requests.delete(url)
             except Exception as e:
                 print(res.text, str(e), flush=True, end=" ")
@@ -126,6 +128,10 @@ def make_cli(env='dev'):
         """
         Rebuild the elasticsearch indexes
         """
+        _index_name = app.config["DOCUMENT_INDEX"]
+        if not app.elasticsearch.indices.exists(index=_index_name):
+            print(f"Index {_index_name} not found.")
+            load_elastic_conf(_index_name, rebuild=False)
 
         # BUILD THE METADATA DICT FROM THE GITHUB TSV FILE
         response = requests.get(app.config["METADATA_FILE_URL"])
@@ -152,10 +158,10 @@ def make_cli(env='dev'):
         # INDEXATION DES DOCUMENTS
         all_docs = []
         try:
-            _index_name = app.config["DOCUMENT_INDEX"]
             if years == "all":
                 years = app.config["ALL_YEARS"]
             start_year, end_year = (int(y) for y in years.split("-"))
+            print("Fetching documents from DTS")
             for year in range(start_year, end_year + 1):
 
                 _ids = [
@@ -179,6 +185,7 @@ def make_cli(env='dev'):
                         )
                     ]))
 
+            print("Indexig documents in elasticsearch")
             app.elasticsearch.bulk(body=all_docs, request_timeout=60*10)
 
         except Exception as e:
