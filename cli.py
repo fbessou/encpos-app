@@ -33,10 +33,10 @@ def load_elastic_conf(index_name, rebuild=False):
         if rebuild:
             print(f"Deleting {index_name} index.")
             res = requests.delete(url)
-        with open(f'{app.config["ELASTICSEARCH_CONFIG_DIR"]}/_global.conf.json', 'r') as _global:
+        with open('elasticsearch/_global.conf.json', 'r') as _global:
             global_settings = json.load(_global)
 
-            with open(f'{app.config["ELASTICSEARCH_CONFIG_DIR"]}/{index_name}.conf.json', 'r') as f:
+            with open(f'elasticsearch/{index_name}.conf.json', 'r') as f:
                 payload = json.load(f)
                 payload["settings"] = global_settings
                 print("UPDATE INDEX CONFIGURATION:", url)
@@ -51,16 +51,17 @@ def load_elastic_conf(index_name, rebuild=False):
         raise e
 
 
-def make_cli(env='dev'):
+def make_cli():
     """ Creates a Command Line Interface for everydays tasks
 
     :return: Click groum
     """
 
     @click.group()
-    def cli():
+    @click.option('--config', default="staging", type=click.Choice(["local", "staging", "prod"]), help="select appropriate .env file to use", show_default=True)
+    def cli(config):
         global app
-        app = create_app(env)
+        app = create_app(config)
         app.all_indexes = f"{app.config['DOCUMENT_INDEX']},{app.config['COLLECTION_INDEX']}"
 
     @click.command("search")
